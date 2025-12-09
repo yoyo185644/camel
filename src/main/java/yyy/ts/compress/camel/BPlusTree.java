@@ -45,7 +45,10 @@ public class BPlusTree {
 
     public static KeyNode next = null;
 
-
+    public BPlusTree(int order) {
+        this.root = new BPlusTreeNode(true);
+        this.order = order;
+    }
 
     public BPlusTree(int order, SkipList skipList) {
         this.root = new BPlusTreeNode(true);

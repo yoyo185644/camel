@@ -85,7 +85,10 @@ public class BPlusDecimalTree {
 
 
     // 按照寻找到的m的值进行保存
-
+    public BPlusDecimalTree(int order) {
+        this.root = new BPlusDecimalTreeNode(true);
+        this.order = order;
+    }
     public BPlusDecimalTree(int order, SkipList skipList) {
         this.root = new BPlusDecimalTreeNode(true);
         this.order = order;

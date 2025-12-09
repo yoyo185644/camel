@@ -48,6 +48,10 @@ public class BPlusTree2{
     // 用一个指针永远指向下一个值
     public static KeyNode previousTSNode = null;
 
+    public BPlusTree2(int order) {
+        this.root = new BPlusTreeNode2(true);
+        this.order = order;
+    }
 
 
     public BPlusTree2(int order, SkipList skipList) {
