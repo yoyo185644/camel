@@ -36,32 +36,32 @@ public class TestCamel {
     private static final String[] FILENAMES = {
 //            "/init.csv",    //First run a dataset to ensure the relevant hbase settings of the zstd and snappy compressors
             "/City-temp.csv", //
-            "/IR-bio-temp.csv",
-            "/Wind-Speed.csv",
-            "/PM10-dust.csv",
-            "/Stocks-UK.csv",
-            "/Stocks-USA.csv",
-            "/Stocks-DE.csv",
-            "/Dew-point-temp.csv",
-            "/Air-pressure.csv",
-            "/Basel-wind.csv",
-            "/Basel-temp.csv",
-            "/Bitcoin-price.csv",
-            "/Bird-migration.csv",
-            "/Air-sensor.csv",
-////
-            "/Food-price.csv",
-            "/electric_vehicle_charging.csv",
-            "/Blockchain-tr.csv",
-            "/SSD-bench.csv",
-            "/City-lat.csv",
-            "/City-lon.csv",
-            "/POI-lat.csv",
-            "/POI-lon.csv",
-
-            "/Cpu-usage.csv",
-            "/Disk-usage.csv",
-            "/Mem-usage.csv",
+//            "/IR-bio-temp.csv",
+//            "/Wind-Speed.csv",
+//            "/PM10-dust.csv",
+//            "/Stocks-UK.csv",
+//            "/Stocks-USA.csv",
+//            "/Stocks-DE.csv",
+//            "/Dew-point-temp.csv",
+//            "/Air-pressure.csv",
+//            "/Basel-wind.csv",
+//            "/Basel-temp.csv",
+//            "/Bitcoin-price.csv",
+//            "/Bird-migration.csv",
+//            "/Air-sensor.csv",
+//////
+//            "/Food-price.csv",
+//            "/electric_vehicle_charging.csv",
+//            "/Blockchain-tr.csv",
+//            "/SSD-bench.csv",
+//            "/City-lat.csv",
+//            "/City-lon.csv",
+//            "/POI-lat.csv",
+//            "/POI-lon.csv",
+//
+//            "/Cpu-usage.csv",
+//            "/Disk-usage.csv",
+//            "/Mem-usage.csv",
 
 
 
@@ -121,6 +121,20 @@ public class TestCamel {
                 IDecompressor decompressor = decompressors[i];
                 long decode_start = System.nanoTime();
                 List<Double> uncompressedValues = decompressor.decompress();
+
+                for(int j=0; j < values.length; j++) {
+                    if (values[j] != uncompressedValues.get(j).doubleValue()){
+                        System.out.println(
+                                "j = " + j +
+                                        ", values[j] = " + values[j] +
+                                        ", uncompressed = " + uncompressedValues.get(j).doubleValue() +
+                                        ", msg = Value did not match"
+                        );
+                         assertEquals(j, values[j], uncompressedValues.get(j).doubleValue(), "Value did not match");
+
+                    }
+
+                }
                 decodingDuration = System.nanoTime() - decode_start;
 
                 String key = compressor.getKey();

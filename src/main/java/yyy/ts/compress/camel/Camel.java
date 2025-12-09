@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import static yyy.ts.compress.camel.CamelUtils.*;
 public class Camel {
@@ -25,7 +26,7 @@ public class Camel {
 //    public final static BigDecimal[]  threshold = {BigDecimal.valueOf(0.5), BigDecimal.valueOf(0.25), BigDecimal.valueOf(0.125), BigDecimal.valueOf(0.0625)};
     public final static long[]  threshold = {5, 25, 125, 625};
 
-    private static final long[] powers = {10L, 100L, 1000L, 10000L, 10000L};
+    private static final long[] powers = {1L, 10L, 100L, 1000L, 10000L, 100000L};
     public static Map<String, byte[]> compressVal = new HashMap<>();
 
     private final OutputBitStream out;
@@ -71,6 +72,9 @@ public class Camel {
      */
     public int addValue(double value) {
         if(first) {
+            Long[] decimal = cal_decimal_count(value);
+            int decimal_count= Math.toIntExact(decimal[0]);
+            value = (value < 0 ? -1: 1) * ((double) ((int)Math.abs(value)  * powers[decimal_count] + decimal[1]))/powers[decimal_count];
             return writeFirst(Double.doubleToRawLongBits(value));
         } else {
             return compressValue(value);
@@ -100,7 +104,15 @@ public class Camel {
     // 数据压缩
     private int compressValue(double value) {
         // 压缩小数位 默认小数位是1.**
-        size = compressIntegerValue((int)value);
+        int intSignal = value < 0 ? 0 : 1;
+        size = compressIntegerValue((int)value, intSignal);
+        Long[] decimal = cal_decimal_count(value);
+        size = compressDecimalValue(decimal[1], Math.toIntExact(decimal[0]));
+
+        return size;
+    }
+
+    public Long[] cal_decimal_count(double value) {
         double factor = 1;
         int decimal_count = 0;
         value = Math.abs(value);
@@ -113,37 +125,23 @@ public class Camel {
         if (decimal_count == 0) {
             decimal_count = 1;
         }
-        if (decimal_count > 0 && decimal_count<= 4) {
-            decimal_value =  ((long) (value * powers[decimal_count]) % powers[decimal_count])/10;
+        if (decimal_count > 0 && decimal_count<= DECIMAL_MAX_COUNT) {
+            decimal_value =  Math.round (value * powers[decimal_count]) % powers[decimal_count];
         }else {
-            decimal_value = ((long) (value * powers[4]) % powers[4])/10;
-            decimal_count = 4;
+            decimal_value = Math.round (value * powers[DECIMAL_MAX_COUNT]) % powers[DECIMAL_MAX_COUNT];
+            decimal_count = DECIMAL_MAX_COUNT;
         }
-        size = compressDecimalValue(decimal_value, decimal_count);
-
-
-        // 压缩整数位
-
-        return size;
-    }
-
-
-    public int countDecimalPlaces(BigDecimal value) {
-        String valueStr = value.toString();
-        int decimalPointIndex = valueStr.indexOf('.');
-
-        if (decimalPointIndex >= 0) {
-            return valueStr.length() - decimalPointIndex - 1;
-        } else {
-            // No decimal point, so there are no decimal places
-            return 0;
-        }
+        Long[] res = new Long[2];
+        res[0] = (long)decimal_count;
+        res[1] = decimal_value;
+        return res;
     }
 
 
     // 压缩小数部分
     private int compressDecimalValue(long decimal_value, int decimal_count) {
         // 计算小数位数
+        if (decimal_count == 0) return  this.size;
         out.writeInt(decimal_count-1, 2); // 保存字节数 00-1 01-2 10-3 11-4
         size += 2;
         // 计算m的值
@@ -155,7 +153,7 @@ public class Camel {
             out.writeBit(true);
             m = (int) (decimal_value % thread);
             // 对于m进行XOR操作
-            long xor = (Double.doubleToLongBits((double)decimal_value/powers[decimal_count-1]+1)) ^ Double.doubleToLongBits(((double) m/powers[decimal_count-1]+1));
+            long xor = (Double.doubleToLongBits((double)decimal_value/powers[decimal_count]+1)) ^ Double.doubleToLongBits(((double) m/powers[decimal_count]+1));
             // 保存小数位数长度的centerBits 保存decimal_count （四位最多就是1000）
             out.writeLong(xor >>> 52 - decimal_count, decimal_count);
             size += decimal_count;// Store the meaningful bits of XOR
@@ -165,9 +163,9 @@ public class Camel {
         }
 
         // 保存m的值
-        if (decimal_count <= 1) { // 如果是1 直接往后读decimal_count+1位
-            out.writeInt(m, decimal_count+1);
-            size += (decimal_count+1);
+        if (decimal_count == 1) { // 如果是1 直接往后读decimal_count+1位
+            out.writeInt(m, 3);
+            size += 3;
         } else if (decimal_count ==2) {
             if (m < 8) {
                 out.writeInt(0, 1);
@@ -175,8 +173,8 @@ public class Camel {
                 size += 4;
             }  else {
                 out.writeInt(1, 1);
-                out.writeInt(m-8, 4);
-                size += 5;
+                out.writeInt(m, 5);
+                size += 6;
             }
 
         } else if (decimal_count == 3) {
@@ -221,14 +219,17 @@ public class Camel {
 
         }
 
-
         return this.size;
     }
 
     // 压缩整数部分
-    private int compressIntegerValue(long int_value) {
+    private int compressIntegerValue(long int_value, int intSignal) {
 
-        int diff = (int)(int_value - storedVal) ;
+        int diff = (int)(int_value - storedVal);
+
+        // 写入符号为 主要为了区分-0和+0
+        out.writeInt(intSignal, 1);
+
         size += 2;
         if (diff >= -1 && diff <= 1) {
             out.writeInt((diff + 1), 2); // Map -1 to 0, 0 to 1, 1 to 2 respectively

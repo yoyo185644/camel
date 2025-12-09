@@ -4,6 +4,8 @@ import fi.iki.yak.ts.compression.gorilla.Value;
 import gr.aueb.delorean.chimp.InputBitStream;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.LinkedList;
 import java.util.List;
@@ -14,12 +16,13 @@ public class CamelDecompressor {
 
     private long storedVal = 0;
 
+    private double currentVal = 0;
     private boolean first = true;
 
     private boolean endOfStream = false;
 
     private static final int DEFAULT_BLOCK_SIZE = 1000;
-    private static final long[] powers = {10L, 100L, 1000L, 10000L};
+    private static final long[] powers = {1L, 10L, 100L, 1000L, 10000L};
     private long readNum = 0;
 
     // 1位小数对应的centerbits与前导数0的关系
@@ -50,15 +53,15 @@ public class CamelDecompressor {
 
     public List<Double> getValues() {
         List<Double> list = new LinkedList<>();
-        Value value = readPair();
+        Double value = readPair();
         while (value != null) {
-            list.add(value.getDoubleValue());
+            list.add(value);
             value = readPair();
         }
         return list;
     }
 
-    public Value readPair() {
+    public Double readPair() {
         try {
             next();
         } catch (IOException e) {
@@ -67,7 +70,7 @@ public class CamelDecompressor {
         if(endOfStream) {
             return null;
         }
-        return new Value(storedVal);
+        return currentVal;
     }
 
     private void next() throws IOException {
@@ -77,24 +80,28 @@ public class CamelDecompressor {
             long fistVal_long = in.readLong(64);
             double fistVal = Double.longBitsToDouble(fistVal_long);
             storedVal = (int)fistVal;
+            currentVal = fistVal;
         } else {
             if (readNum-1 == DEFAULT_BLOCK_SIZE) {
                 endOfStream = true;
                 return;
             }
-            nextValue();
+            currentVal = nextValue();
         }
     }
 
     private double nextValue() throws IOException {
         // 读取第一位符号位 0表示负数 1表示正数
-        long intVal = readInt();
-        double decimal = readDecimal();
-        return (intVal + decimal);
+        long[] intVal = readInt();
+        double[] decimal = readDecimal();
+        int decimal_count = (int)decimal[0];
+        currentVal = (intVal[0] == 0 ? -1: 1) * ((intVal[1] * powers[decimal_count] + decimal[1] * powers[decimal_count])/powers[decimal_count]);
+        return currentVal;
     }
 
     // 解压整数部分
-    private long readInt() throws IOException {
+    private long[] readInt() throws IOException {
+        int intSignal = in.readInt(1);
         int integerNum = in.readInt(2);
         long diffVal;
         if (integerNum < 3) {
@@ -110,14 +117,21 @@ public class CamelDecompressor {
             }
             diffVal = (diffSymbol == 0 ? -1: 1) * diffVal;
         }
-            storedVal = diffVal + storedVal;
-            return  storedVal;
+        storedVal = diffVal + storedVal;
+
+        long[] intVal = new long[2];
+        intVal[0] = (storedVal >= 0) ? 1 : 0;
+        if (storedVal == 0 && intSignal == 0) {
+            intVal[0]= 0;
+        }
+        intVal[1] = Math.abs(storedVal);
+        return  intVal;
 
     }
 
 
     // 解压小数部分
-    private double readDecimal() throws IOException {
+    private double[] readDecimal() throws IOException {
         // 读取小数位数
         int decimal_count = in.readInt(2) + 1;
         // 是否计算m的值
@@ -127,16 +141,15 @@ public class CamelDecompressor {
         long xorString = 0;
         if (isM == 1) {
             // 查找保存的xor值
-            xor = in.readInt(decimal_count);
+            xor = in.readLong(decimal_count);
             // 根据leadingZeroSNum和XOR拼接xorVal
             long shiftedValue = xor << (52 - decimal_count);
             xorString = shiftedValue;
-//            xorString = String.format("%64s", Long.toBinaryString(shiftedValue)).replace(' ', '0');
         }
         // 将m用二进制数表示
         int m_int = 0;
         if (decimal_count <= 1) { // 如果是1 直接往后读decimal_count+1位
-            m_int = in.readInt(decimal_count+1);
+            m_int = in.readInt(3);
         } else if (decimal_count ==2) {
             int temp = in.readInt(1);
             if ( temp == 0) {
@@ -169,18 +182,23 @@ public class CamelDecompressor {
 
         }
 
+        double scale = (double) powers[decimal_count];
         if (isM == 1){
-            m = (double) m_int / powers[decimal_count-1] + 1;
+            m = (double) m_int / scale + 1;
             long m_prime = Double.doubleToLongBits(m);
             long decimalLong = xorString ^ m_prime;;
             // 使用 Double.longBitsToDouble 将 long 转换为 double
             decimalVal = Double.longBitsToDouble(decimalLong) - 1;
         } else {
-           m = (double) m_int / powers[decimal_count-1];
+           m = (double) m_int / powers[decimal_count];
            decimalVal = m;
         }
 
-        return decimalVal;
+        decimalVal = Math.round(decimalVal * scale) / scale;
+        double[] decimalRes = new double[2];
+        decimalRes[0] = decimal_count;
+        decimalRes[1] = decimalVal;
+        return decimalRes;
 
     }
 
