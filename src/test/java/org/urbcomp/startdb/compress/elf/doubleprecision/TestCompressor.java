@@ -42,7 +42,7 @@ public class TestCompressor {
 //            "/Basel-wind.csv",
 //            "/Basel-temp.csv",
 //            "/Bitcoin-price.csv",
-            "/Bird-migration.csv",
+//            "/Bird-migration.csv",
 //            "/Air-sensor.csv",
 
 //            "/Food-price.csv",
@@ -50,7 +50,7 @@ public class TestCompressor {
 //            "/Blockchain-tr.csv",
 //            "/SSD-bench.csv",
 //            "/City-lat.csv",
-//            "/City-lon.csv",
+            "/City-lon.csv",
 //            "/POI-lat.csv",
 //            "/POI-lon.csv",
     };
@@ -100,7 +100,7 @@ public class TestCompressor {
 //                new ElfOnGorillaCompressorOS(),
 //                new ChimpCompressor(),
 //                new ElfOnChimpCompressor(),
-                new ChimpNCompressor(128),
+//                new ChimpNCompressor(128),
 //                new ElfOnChimpNCompressor(128),
 //                new ElfCompressor(),
             };

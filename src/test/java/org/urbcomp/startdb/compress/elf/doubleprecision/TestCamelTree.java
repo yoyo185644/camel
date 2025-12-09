@@ -17,6 +17,9 @@ import org.urbcomp.startdb.compress.elf.compressor.CamelCompressor;
 import org.urbcomp.startdb.compress.elf.compressor.ICompressor;
 import org.urbcomp.startdb.compress.elf.decompressor.CamelDecompressorOS;
 import org.urbcomp.startdb.compress.elf.decompressor.IDecompressor;
+import yyy.ts.compress.camel.BPlusDecimalTree;
+import yyy.ts.compress.camel.BPlusTree;
+import yyy.ts.compress.camel.BPlusTree2;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -36,7 +39,7 @@ public class TestCamelTree {
 
     private static final String[] FILENAMES = {
 //            "/init.csv",    //First run a dataset to ensure the relevant hbase settings of the zstd and snappy compressors
-//            "/City-temp.csv", //
+            "/City-temp.csv", //
 //            "/IR-bio-temp.csv",
 //            "/Wind-Speed.csv",
 //            "/PM10-dust.csv",
@@ -60,9 +63,9 @@ public class TestCamelTree {
 //            "/POI-lat.csv",
 //            "/POI-lon.csv",
 
-            "/Cpu-usage.csv",
-            "/Disk-usage.csv",
-            "/Mem-usage.csv",
+//            "/Cpu-usage.csv",
+//            "/Disk-usage.csv",
+//            "/Mem-usage.csv",
 
 
 
@@ -109,14 +112,14 @@ public class TestCamelTree {
                 compressor.close();
                 encodingDuration = System.nanoTime() - start;
 //      index
-//                BPlusTree bPlusTree = compressor.getbPlusTree();
-//                BPlusTree2 bPlusTree2 = compressor.getbPlusTre2();
-//                BPlusDecimalTree bPlusDecimalTree = compressor.getbPlusDecimalTree();
-//                long intTreeSize = bPlusTree.levelOrderTraversal(bPlusTree);
-//                long intTreeSize2 = bPlusTree2.levelOrderTraversal(bPlusTree2);
-//                long decimalSize2 = bPlusDecimalTree.levelOrderTraversal(bPlusDecimalTree);
-//                treeSize = treeSize + intTreeSize;
-//                treeSize2 = treeSize2 + intTreeSize2 + decimalSize2;
+                BPlusTree bPlusTree = compressor.getbPlusTree();
+                BPlusTree2 bPlusTree2 = compressor.getbPlusTre2();
+                BPlusDecimalTree bPlusDecimalTree = compressor.getbPlusDecimalTree();
+                long intTreeSize = bPlusTree.levelOrderTraversal(bPlusTree);
+                long intTreeSize2 = bPlusTree2.levelOrderTraversal(bPlusTree2);
+                long decimalSize2 = bPlusDecimalTree.levelOrderTraversal(bPlusDecimalTree);
+                treeSize = treeSize + intTreeSize;
+                treeSize2 = treeSize2 + intTreeSize2 + decimalSize2;
                 size = size + compressor.getSize();
                 time += encodingDuration / TIME_PRECISION;
                 byte[] result = compressor.getBytes();
@@ -137,10 +140,10 @@ public class TestCamelTree {
 //        System.out.println(fileName+ " " + "sourceSize:" + totalBlocks * FileReader.DEFAULT_BLOCK_SIZE * 64.0);
 //        System.out.println(fileName + " " + "compressSize:" + size);
         System.out.println(fileName + " " + "compressRatio:" + ratio);
-//        System.out.println(fileName + " " + "treeSize:" + treeSize);
-//        System.out.println(fileName + " " + "treeRatio:" + treeRatio);
-//        System.out.println(fileName + " " + "treeSize2:" + treeSize2);
-//        System.out.println(fileName + " " + "treeRatio2:" + treeRatio2);
+        System.out.println(fileName + " " + "treeSize:" + treeSize);
+        System.out.println(fileName + " " + "treeRatio:" + treeRatio);
+        System.out.println(fileName + " " + "treeSize2:" + treeSize2);
+        System.out.println(fileName + " " + "treeRatio2:" + treeRatio2);
         System.out.println(fileName + " " + compress_time);
 
 

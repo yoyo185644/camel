@@ -7,6 +7,7 @@ import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Map;
 
+import static yyy.ts.compress.camel.CamelUtils.binaryLongToBinary;
 import static yyy.ts.compress.camel.CamelUtils.convertToBinary;
 
 public class CamelTree {
@@ -101,7 +102,7 @@ public class CamelTree {
     private int compressValue(long value_bits) {
         double value = Double.longBitsToDouble(value_bits);
         // 压缩整数位
-//        size = compressIntegerValue((int)value);
+        size = compressIntegerValue((int)value);
 
         // 压缩小数位 默认小数位是1.**
         BigDecimal big_value = BigDecimal.valueOf(value);
@@ -111,33 +112,33 @@ public class CamelTree {
         size = compressDecimalValue(BigDecimal.valueOf(Math.abs(decimal_value.doubleValue())));
         System.out.println(value + ": " + size);
 
-//        if (TreeFlag) {
-//            TreeFlag = false;
-//            // ***** 范围 *****
-//            bPlusTree = new BPlusTree(3);
-//            // ***** 值 *****
-//            bPlusTree2 = new BPlusTree2(3);
-//            bPlusDecimalTree = new BPlusDecimalTree(3);
-//            bPlusDecimalTree = bPlusDecimalTree.buildTree(bPlusDecimalTree, compressVal.get("decimalCount"), compressVal.get("xorFlag"), compressVal.get("xorVal"));
-//
-//
-//        } else {
-////            System.out.println("compressInt" + Arrays.toString(compressVal.get("compressInt")) + ";" + "decimalCount" + Arrays.toString(compressVal.get("decimalCount")) +
-////                    "xorFlag" + Arrays.toString(compressVal.get("xorFlag")) + "xorVal" + Arrays.toString(compressVal.get("xorVal")) + "compressDecimal" + Arrays.toString(compressVal.get("compressDecimal")));
-//            // ***** 范围 ***** 对于范围查询就是每个整数后面加一颗树
-//            bPlusTree.insert(new BPlusDecimalTree(3), compressVal.get("compressInt"), compressVal.get("compressInt"), compressVal.get("decimalCount"),
-//                    compressVal.get("xorFlag"), compressVal.get("xorVal"), compressVal.get("compressDecimal"), 1);
-//            // ***** 值 ***** 对于值查询就是建立两颗树
-//            bPlusTree2.insert(compressVal.get("compressInt"), compressVal.get("compressInt"), compressVal.get("decimalCount"),
-//                    compressVal.get("xorFlag"), compressVal.get("xorVal"), compressVal.get("compressDecimal"), 1);
-//            bPlusDecimalTree.insert(compressVal.get("xorFlag"), compressVal.get("xorVal"), compressVal.get("compressInt"), compressVal.get("compressDecimal"), 1);
-//
-//        }
-//        // ***** 范围 *****
-//        this.setbPlusTree(bPlusTree);
-////         ***** 对于值查询就是统一成一颗树
-//        this.setbPlusTree2(bPlusTree2);
-//        this.setbPlusDecimalTree(bPlusDecimalTree);
+        if (TreeFlag) {
+            TreeFlag = false;
+            // ***** 范围 *****
+            bPlusTree = new BPlusTree(3);
+            // ***** 值 *****
+            bPlusTree2 = new BPlusTree2(3);
+            bPlusDecimalTree = new BPlusDecimalTree(3);
+            bPlusDecimalTree = bPlusDecimalTree.buildTree(bPlusDecimalTree, compressVal.get("decimalCount"), compressVal.get("xorFlag"), compressVal.get("xorVal"));
+
+
+        } else {
+//            System.out.println("compressInt" + Arrays.toString(compressVal.get("compressInt")) + ";" + "decimalCount" + Arrays.toString(compressVal.get("decimalCount")) +
+//                    "xorFlag" + Arrays.toString(compressVal.get("xorFlag")) + "xorVal" + Arrays.toString(compressVal.get("xorVal")) + "compressDecimal" + Arrays.toString(compressVal.get("compressDecimal")));
+            // ***** 范围 ***** 对于范围查询就是每个整数后面加一颗树
+            bPlusTree.insert(new BPlusDecimalTree(3), compressVal.get("compressInt"), compressVal.get("compressInt"), compressVal.get("decimalCount"),
+                    compressVal.get("xorFlag"), compressVal.get("xorVal"), compressVal.get("compressDecimal"), 1);
+            // ***** 值 ***** 对于值查询就是建立两颗树
+            bPlusTree2.insert(compressVal.get("compressInt"), compressVal.get("compressInt"), compressVal.get("decimalCount"),
+                    compressVal.get("xorFlag"), compressVal.get("xorVal"), compressVal.get("compressDecimal"), 1);
+            bPlusDecimalTree.insert(compressVal.get("xorFlag"), compressVal.get("xorVal"), compressVal.get("compressInt"), compressVal.get("compressDecimal"), 1);
+
+        }
+        // ***** 范围 *****
+        this.setbPlusTree(bPlusTree);
+//         ***** 对于值查询就是统一成一颗树
+        this.setbPlusTree2(bPlusTree2);
+        this.setbPlusDecimalTree(bPlusDecimalTree);
 
         return size;
     }
@@ -193,12 +194,12 @@ public class CamelTree {
             // 保存小数位数长度的centerBits 保存decimal_count （四位最多就是1000）
             out.writeLong(xor >>> trailingZeros, decimal_count);
             size += decimal_count;// Store the meaningful bits of XOR
-//            compressVal.put("xorFlag", convertToBinary(1, 1));
-//            compressVal.put("xorVal", binaryLongToBinary(xor, 52-trailingZeros));
+            compressVal.put("xorFlag", convertToBinary(1, 1));
+            compressVal.put("xorVal", binaryLongToBinary(xor, 52-trailingZeros));
         } else {  // m就为原来的值
             out.writeBit(false);
             size += 1;
-//            compressVal.put("xorFlag", convertToBinary(0, 1));
+            compressVal.put("xorFlag", convertToBinary(0, 1));
         }
 
         int m_int = (m.multiply(BigDecimal.valueOf(Math.pow(10, decimal_count)))).intValue();
@@ -206,18 +207,18 @@ public class CamelTree {
         if (decimal_count <= 1) { // 如果是1 直接往后读decimal_count+1位
             out.writeInt(m_int, decimal_count+1);
             size += decimal_count+1;
-//            compressVal.put("compressDecimal", convertToBinary(m_int, decimal_count+1));
+            compressVal.put("compressDecimal", convertToBinary(m_int, decimal_count+1));
         } else if (decimal_count ==2) {
             if (m_int < 8) {
                 out.writeInt(0, 1);
                 out.writeInt(m_int, 3);
                 size += 4;
-//                compressVal.put("compressDecimal", convertToBinary(m_int, 3));
+                compressVal.put("compressDecimal", convertToBinary(m_int, 3));
             }  else {
                 out.writeInt(1, 1);
                 out.writeInt(m_int, 5);
                 size += 6;
-//                compressVal.put("compressDecimal", convertToBinary(m_int, 5));
+                compressVal.put("compressDecimal", convertToBinary(m_int, 5));
             }
 
         } else if (decimal_count == 3) {
@@ -225,23 +226,23 @@ public class CamelTree {
                 out.writeInt(0, 2);
                 out.writeInt(m_int, 1);
                 size += 3;
-//                compressVal.put("compressDecimal", convertToBinary(m_int, 2));
+                compressVal.put("compressDecimal", convertToBinary(m_int, 2));
             }else if (m_int < 8){
                 out.writeInt(1, 2);
                 out.writeInt(m_int, 3);
                 size += 5;
-//                compressVal.put("compressDecimal", convertToBinary(m_int, 3));
+                compressVal.put("compressDecimal", convertToBinary(m_int, 3));
             }else if (m_int < 32) {
                 out.writeInt(2, 2);
                 out.writeInt(m_int, 5);
                 size += 7;
-//                compressVal.put("compressDecimal", convertToBinary(m_int, 4));
+                compressVal.put("compressDecimal", convertToBinary(m_int, 4));
             }else {
                 out.writeInt(3, 2);
                 out.writeInt(m_int, mValueBits[decimal_count-1]);
                 size += 2;
                 size += mValueBits[decimal_count-1];
-//                compressVal.put("compressDecimal", convertToBinary(m_int, mValueBits[decimal_count-1]));
+                compressVal.put("compressDecimal", convertToBinary(m_int, mValueBits[decimal_count-1]));
             }
 
         } else {
@@ -249,23 +250,23 @@ public class CamelTree {
                 out.writeInt(0, 2);
                 out.writeInt(m_int, 4);
                 size += 6;
-//                compressVal.put("compressDecimal", convertToBinary(m_int, 4));
+                compressVal.put("compressDecimal", convertToBinary(m_int, 4));
             }else if (m_int < 64){
                 out.writeInt(1, 2);
                 out.writeInt(m_int, 6);
                 size += 8;
-//                compressVal.put("compressDecimal", convertToBinary(m_int, 6));
+                compressVal.put("compressDecimal", convertToBinary(m_int, 6));
             }else if (m_int < 256) {
                 out.writeInt(2, 2);
                 out.writeInt(m_int, 8);
                 size += 10;
-//                compressVal.put("compressDecimal", convertToBinary(m_int, 8));
+                compressVal.put("compressDecimal", convertToBinary(m_int, 8));
             }else {
                 out.writeInt(3, 2);
                 out.writeInt(m_int, mValueBits[decimal_count-1]);
                 size += 2;
                 size += mValueBits[decimal_count-1];
-//                compressVal.put("compressDecimal", convertToBinary(m_int, mValueBits[decimal_count-1]));
+                compressVal.put("compressDecimal", convertToBinary(m_int, mValueBits[decimal_count-1]));
             }
 
         }
@@ -277,18 +278,18 @@ public class CamelTree {
     private int compressIntegerValue(long int_value) {
 
         long diff_value =  int_value - storedVal;
-//        // 用于建索引
-//        long first_diff_value = int_value - firstVal;
-//        if (Math.abs(first_diff_value) >=0 && Math.abs(first_diff_value) < 2)
-//        {
-//            compressVal.put("compressInt", convertToBinary((int) first_diff_value, 2));
-//        }else if (Math.abs(first_diff_value) >=2 && Math.abs(first_diff_value) < 4){
-//            compressVal.put("compressInt", convertToBinary((int) first_diff_value, 3));
-//        } else if (Math.abs(first_diff_value) >=4 && Math.abs(first_diff_value) < 8){
-//            compressVal.put("compressInt", convertToBinary((int) first_diff_value, 4));
-//        } else {
-//            compressVal.put("compressInt", convertToBinary((int) first_diff_value, 16));
-//        }
+        // 用于建索引
+        long first_diff_value = int_value - firstVal;
+        if (Math.abs(first_diff_value) >=0 && Math.abs(first_diff_value) < 2)
+        {
+            compressVal.put("compressInt", convertToBinary((int) first_diff_value, 2));
+        }else if (Math.abs(first_diff_value) >=2 && Math.abs(first_diff_value) < 4){
+            compressVal.put("compressInt", convertToBinary((int) first_diff_value, 3));
+        } else if (Math.abs(first_diff_value) >=4 && Math.abs(first_diff_value) < 8){
+            compressVal.put("compressInt", convertToBinary((int) first_diff_value, 4));
+        } else {
+            compressVal.put("compressInt", convertToBinary((int) first_diff_value, 16));
+        }
 
         int diff = (int) diff_value;
         if (diff ==0){ // [0,2)
