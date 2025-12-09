@@ -4,25 +4,57 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public class test {
+    private static final long[] powers = {10L, 100L, 1000L, 10000L, 10000L};
+
     public static void main(String[] args) {
-//        double factor = 1;
-//        int decimalPlaces = 0;
-//        double value = 0.58; // 示例双精度浮点数
-//        double epsilon = 0.0000001; // 设置一个很小的阈值
-//        while (Math.abs(value * factor - Math.round(value * factor)) > epsilon) {
-//            factor *= 10.0;
-//            decimalPlaces++;
+
+//        double value = 145.53; // 示例双精度浮点数
+//        long intValue = (long) (value * 1000); // 将浮点数乘以 1,000,000 转换为整数
+//        intValue = Math.abs(intValue); // 取绝对值，避免负数的影响
+//        int decimal_count = 0;
+//        while (intValue > 0) {
+//            intValue /= 10;
+//            decimal_count++;
 //        }
-        double value = 0.08;
-//        // 将浮点数转换为整数
-//        long intValue = (long) (value * 1000L);
+//        decimal_count = decimal_count-((int)Math.log10(value)+1);
+//
+//        System.out.println("小数部分的位数估算是: " + decimal_count );
+//        long xorValue = 0L;
+//        long xor = 3;
+//        long shiftedValue = xor << (52 - 2);
+//        for (int i = 0; i < 64; i++) {
+//            xorValue ^= (shiftedValue & (1L << i)); // 使用异或操作符直接计算xorValue
+//        }
+//
+//        // 输出xorValue的64位二进制表示
+//        for (int i = 63; i >= 0; i--) {
+//            long mask = 1L << i; // 生成一个只有第i位为1的掩码
+//            if ((xorValue & mask) != 0) {
+//                System.out.print("1");
+//            } else {
+//                System.out.print("0");
+//            }
+//        }
 
-        // 获取小数部分的整数值
-        long decimalValue = ((long) (value * 1000L) % 1000L)/10;
+//        byte[] arr = intToBinary(16, 5);
+//        System.out.println(Arrays.toString(arr));
+//
+//        System.out.println(binaryToInt(arr));
 
-        System.out.println("小数部分的位数估算是: " + decimalValue);
+
+
+        String osArch = System.getProperty("os.arch");
+        // 判断是32位还是64位
+        if (osArch.contains("64")) {
+            System.out.println("64位的JVM");
+        } else {
+            System.out.println("32位的JVM");
+        }
+
 
 //        while (Math.abs(value * factor - Math.round(value * factor)) > epsilon) {
 //            System.out.println(value * factor);
@@ -47,11 +79,24 @@ public class test {
 //        System.out.println(binaryString);
     }
 
-    private static int countTrailingZeros(BigDecimal number) {
-        // 确保number是一个正数
+    public static byte[] intToBinary(int num, int bitLength) {
+        // 创建一个指定长度的字节数组
+        byte[] byteArray = new byte[bitLength];
 
+        // 将整数的二进制表示转换为字节数组
+        for (int i = bitLength - 1; i >= 0; i--) {
+            byteArray[i] = (byte) ((num >> (bitLength - 1 - i)) & 0x01);
+        }
 
-        // 返回尾数中0的数量
-        return 0;
+        return byteArray;
     }
+
+    public static int binaryToInt(byte[] binaryArray) {
+        int result = 0;
+        for (int i = 0; i < binaryArray.length; i++) {
+            result = (result << 1) | binaryArray[i];
+        }
+        return result;
+    }
+
 }

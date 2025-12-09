@@ -10,6 +10,8 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
+import static yyy.ts.compress.camel.CamelUtils.integerBinaryToInt;
+
 /**
  * camel算法专用工具类
  */
@@ -25,23 +27,59 @@ public class CamelUtils {
 
     public static int integerBinaryToInt(byte[] binaryArray) {
         int result = 0;
-        for (int i = 1; i < binaryArray.length; i++) {
+        boolean isNegative = binaryArray[0] == 1;
+
+        // 如果是负数，将补码取反加1得到原始数值
+        if (isNegative) {
+            for (int i = 0; i < binaryArray.length; i++) {
+                binaryArray[i] = (byte) (1 - binaryArray[i]);
+            }
+            for (int i = binaryArray.length - 1; i >= 0; i--) {
+                if (binaryArray[i] == 0) {
+                    binaryArray[i] = 1;
+                    break;
+                } else {
+                    binaryArray[i] = 0;
+                }
+            }
+        }
+
+        for (int i = 0; i < binaryArray.length; i++) {
             result = (result << 1) | binaryArray[i];
         }
-        return binaryArray[0]==1 ? -1*result : result;
+
+        return isNegative ? -result : result;
     }
 
     public static byte[] convertToBinary(int num, int length) {
-        // 将整数转换为二进制字符串
         byte[] binaryArray = new byte[length];
+
+        // 判断是否为负数
+        boolean isNegative = num < 0;
+        if (isNegative) {
+            num = -num;
+            num = (~num + 1) & ((1 << length) - 1); // 取负数的补码
+        }
 
         for (int i = 0; i < length; i++) {
             binaryArray[length - i - 1] = (byte) ((num >> i) & 0x01);
         }
 
+
         return binaryArray;
     }
 
+    public static byte[] decimalToBinary(int num, int bitLength) {
+        // 创建一个指定长度的字节数组
+        byte[] byteArray = new byte[bitLength];
+
+        // 将整数的二进制表示转换为字节数组
+        for (int i = bitLength - 1; i >= 0; i--) {
+            byteArray[i] = (byte) ((num >> (bitLength - 1 - i)) & 0x01);
+        }
+
+        return byteArray;
+    }
 
 
 //    public static byte[] binaryStringToByteArray(String binaryString) {
@@ -64,34 +102,34 @@ public class CamelUtils {
     //压缩小数部分
     public static byte[] compressDecimal(int decimalCount, int key) {
         if (decimalCount <= 1) { // 如果是1 直接往后读decimal_count+1位
-            return convertToBinary(key, decimalCount+1);
+            return decimalToBinary(key, decimalCount+1);
         } else if (decimalCount ==2) {
             if (key < 8) {
-                return convertToBinary(key, 3);
+                return decimalToBinary(key, 3);
             }else {
-                return convertToBinary(key, 5);
+                return decimalToBinary(key, 5);
             }
 
         } else if (decimalCount == 3) {
             if (key < 4) {
-                return convertToBinary(key, 2);
+                return decimalToBinary(key, 2);
             }else if (key < 8){
-                return convertToBinary(key, 3);
+                return decimalToBinary(key, 3);
             }else if (key < 16) {
-                return convertToBinary(key, 4);
+                return decimalToBinary(key, 4);
             }else {
-                return convertToBinary(key, mValueBits[decimalCount-1]);
+                return decimalToBinary(key, mValueBits[decimalCount-1]);
             }
 
         } else {
             if (key < 16) {
-                return convertToBinary(key, 4);
+                return decimalToBinary(key, 4);
             }else if (key < 64){
-                return convertToBinary(key, 6);
+                return decimalToBinary(key, 6);
             }else if (key < 256) {
-                return convertToBinary(key, 8);
+                return decimalToBinary(key, 8);
             }else {
-                return convertToBinary(key, mValueBits[decimalCount-1]);
+                return decimalToBinary(key, mValueBits[decimalCount-1]);
             }
 
         }
@@ -182,17 +220,19 @@ public class CamelUtils {
 
 
     public static void main(String[] args) {
-        byte[] res = convertToBinary(-1, 2);
-        int val = binaryToInt(res);
-
-        long xor = Double.doubleToLongBits(  1.8) ^
-                Double.doubleToLongBits(  1.3);
-        String str = Long.toBinaryString(xor>>50);
-        byte[] bytes = str.getBytes();
-        for (int i = 0 ; i< bytes.length; i++) {
-            bytes[i] = (byte) (bytes[i] - 48);
-        }
-//        byte[] bytes=  binaryStringToByteArray(str);
-        System.out.println(res);
+//        byte[] res = convertToBinary(-1, 2);
+//        int val = binaryToInt(res);
+//
+//        long xor = Double.doubleToLongBits(  1.8) ^
+//                Double.doubleToLongBits(  1.3);
+//        String str = Long.toBinaryString(xor>>50);
+//        byte[] bytes = str.getBytes();
+//        for (int i = 0 ; i< bytes.length; i++) {
+//            bytes[i] = (byte) (bytes[i] - 48);
+//        }
+        byte[] bytes=  convertToBinary(2, 3);
+        byte[] new_byte =bytes;
+        int res = integerBinaryToInt(new byte[]{0,1,0});
+        System.out.println(true);
     }
 }

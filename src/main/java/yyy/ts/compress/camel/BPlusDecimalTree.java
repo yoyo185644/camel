@@ -19,8 +19,8 @@ class FlagTrueNode{
 
 class FlagFalseNode{
     byte flag;
-    ArrayList<TSNode> tsNodeList;
-    public FlagFalseNode(byte flag, ArrayList<TSNode> tsNodeList){
+    ArrayList<SkiplistNode> tsNodeList;
+    public FlagFalseNode(byte flag, ArrayList<SkiplistNode> tsNodeList){
         this.flag = flag;
         this.tsNodeList = tsNodeList;
     }
@@ -29,12 +29,14 @@ class FlagFalseNode{
 // 最后一个节点
 class DecimalNode{
 
+    //  用BitSet代替byte;
     byte[] key;
+
 //    int count;
 
-    ArrayList<TSNode> tsNodeList;
+    ArrayList<SkiplistNode> tsNodeList;
 
-    public DecimalNode(byte[] key, int count, ArrayList<TSNode> tsNodeList){
+    public DecimalNode(byte[] key, int count, ArrayList<SkiplistNode> tsNodeList){
         this.key = key;
 //        this.count = count;
         this.tsNodeList = tsNodeList;
@@ -42,25 +44,14 @@ class DecimalNode{
     }
 }
 
-class TSNode {
-    byte[] valueInt;
-    byte[] valueDecimal;
-    long timeStamp;
-    TSNode nextTS;
-    TSNode beforeTS;
-
-    public TSNode(byte[] valueInt, byte[] valueDecimal,  long timeStamp) {
-        this.valueInt = valueInt;
-        this.valueDecimal = valueDecimal;
-        this.timeStamp = timeStamp;
-        this.nextTS = null;
-    }
-}
-
 class KeyNode{
     byte[] key;
     FlagFalseNode flagFalseNode;
     FlagTrueNode flagTrueNode;
+
+    KeyNode prev;
+    KeyNode next;
+
 
     public KeyNode(byte[] key, FlagTrueNode flagTrueNode, FlagFalseNode flagFalseNode) {
         this.key = key;
@@ -87,28 +78,26 @@ public class BPlusDecimalTree {
     private BPlusDecimalTreeNode root;
     private int order;
 
+    private SkipList skipList;
     private static boolean buildFlag = false;
 
-    private static TSNode previousTSNode = null;
+
+
 
     // 按照寻找到的m的值进行保存
 
-    public BPlusDecimalTree(int order) {
+    public BPlusDecimalTree(int order, SkipList skipList) {
         this.root = new BPlusDecimalTreeNode(true);
         this.order = order;
+        this.skipList = skipList;
     }
 
-    public void insert(byte[] flag, byte[] xorVal, byte[] compressInt, byte[] compressDecimal, long timestamp) {
+    public void insert(byte[] flag, byte[] xorVal, byte[] compressInt, byte[] compressDecimal, double timestamp) {
         // 寻找小数部分
         if (buildFlag) {
             KeyNode node = searchKeyNode(binaryToInt(compressDecimal));
             if (node != null) {
-                TSNode tsNode = new TSNode(compressInt, compressDecimal, timestamp);
-                if (previousTSNode != null) {
-                    previousTSNode.nextTS = tsNode;
-                    tsNode.beforeTS = previousTSNode;
-                }
-                    previousTSNode = tsNode;
+                SkiplistNode tsNode =  skipList.add(timestamp);
                 // 如果flag=1
                 if (binaryToInt(flag) == 1) {
                     // 查询flagTrueNode是否存在
@@ -120,7 +109,7 @@ public class BPlusDecimalTree {
                             decimalNode.tsNodeList.add(tsNode);
                         } else {
                             // 说明第一次指定异或完的值
-                            ArrayList<TSNode> tsNodeList = new ArrayList<>();
+                            ArrayList<SkiplistNode> tsNodeList = new ArrayList<>();
                             tsNodeList.add(tsNode);
                             DecimalNode decimalNodeNew = new DecimalNode(xorVal, 1, tsNodeList);
                             LinkedList<DecimalNode> decimalNodesList = new LinkedList<>();
@@ -128,7 +117,7 @@ public class BPlusDecimalTree {
                         }
                     } else {
                         // 构建一个TSNode
-                        ArrayList<TSNode> tsNodeList = new ArrayList<>();
+                        ArrayList<SkiplistNode> tsNodeList = new ArrayList<>();
                         tsNodeList.add(tsNode);
                         // 插入不同的byte值
                         DecimalNode decimalNode = new DecimalNode(xorVal, 1, tsNodeList);
@@ -140,10 +129,10 @@ public class BPlusDecimalTree {
 
                 } else {
                     if (node.flagFalseNode != null) {
-                        ArrayList<TSNode> tsNodeList = node.flagFalseNode.tsNodeList;
+                        ArrayList<SkiplistNode> tsNodeList = node.flagFalseNode.tsNodeList;
                         tsNodeList.add(tsNode);
                     }else {
-                        ArrayList<TSNode> tsNodeList = new ArrayList<>();
+                        ArrayList<SkiplistNode> tsNodeList = new ArrayList<>();
                         tsNodeList.add(tsNode);
                         byte flagNew = 0;
                         node.flagFalseNode = new FlagFalseNode(flagNew, tsNodeList);
@@ -194,6 +183,14 @@ public class BPlusDecimalTree {
             }
             KeyNode keyNode = new KeyNode(compressDecimal, null, null);
             node.keys.add(i + 1, keyNode);
+            // 更新叶子节点的双向链表
+            if (i + 2 < node.keys.size()) {
+                node.keys.get(i + 1).next = node.keys.get(i + 2);
+            }
+            if (i >= 0) {
+                node.keys.get(i + 1).prev = node.keys.get(i);
+                node.keys.get(i).next = node.keys.get(i + 1); // 更新前一个节点的 next 指针
+            }
         } else {
             while (i >= 0 && decompressDecimal(compressDecimal) < decompressDecimal(node.keys.get(i).key)) {
                 i--;
@@ -260,7 +257,8 @@ public class BPlusDecimalTree {
     public BPlusDecimalTree buildTree(BPlusDecimalTree bPlusTree,  byte[] decimalCount, byte[] xorFlag, byte[] xorVal) {
         int[] range = new int[]{0, 5, 25, 125, 625};
         int decimal_Count = binaryToInt(decimalCount);
-        for (int key = 1; key < range[decimal_Count]; key ++) {
+        SkipList skipList = new SkipList();
+        for (int key = 0; key < range[decimal_Count]; key ++) {
             // todo 参数compressDecimal修改成 compressInt
             bPlusTree.insert(xorFlag, xorVal, null, compressDecimal(decimal_Count, key), 1);
         }
@@ -358,8 +356,53 @@ public class BPlusDecimalTree {
         return size;
     }
 
-    public List<TSNode> getAllLeaf(BPlusDecimalTree tree){
-        List<TSNode> res = new ArrayList<>();
+
+    public long levelOrderTraversalWithPointer(BPlusDecimalTree tree){
+        long size = 0;
+        if (tree == null) {
+            System.out.println("The tree is empty.");
+            return size;
+        }
+
+        Queue<BPlusDecimalTreeNode> queue = new LinkedList<>();
+        queue.offer(tree.root);
+
+        while (!queue.isEmpty()) {
+            BPlusDecimalTreeNode current = queue.poll();
+            if (current != tree.root) {
+                // pointer
+                size += 64*2;
+            }
+            int keySize  = current.keys.size();
+            for (int i =0; i < keySize; i++) {
+                size = size + current.keys.get(i).key.length;
+                if (current.keys.get(i).flagFalseNode!=null) {
+                    // 加上2个双向pointer + skipList中的数据和双向指针
+                    size = size + 1;
+                }
+                if (current.keys.get(i).flagTrueNode!=null) {
+                    int xorSize = current.keys.get(i).flagTrueNode.decimalNodes.size();
+                    for (int j = 0; j < xorSize; j++) {
+                        size += current.keys.get(i).flagTrueNode.decimalNodes.get(j).key.length;
+                    }
+                }
+            }
+
+            if (current.children != null) {
+                for (BPlusDecimalTreeNode child : current.children) {
+                    if (child != null) {
+                        queue.offer(child);
+                    }
+                }
+            }
+        }
+        size += tree.skipList.traverseSize();
+        return size;
+    }
+
+
+    public List<SkiplistNode> getAllLeaf(BPlusDecimalTree tree){
+        List<SkiplistNode> res = new ArrayList<>();
         if (tree == null) {
             System.out.println("The tree is empty.");
             return null;
@@ -372,19 +415,22 @@ public class BPlusDecimalTree {
             BPlusDecimalTreeNode current = queue.poll();
             int keySize  = current.keys.size();
             for (int i =0; i < keySize; i++) {
-                if (current.keys.get(i).flagFalseNode!=null) {
-                  res.addAll(current.keys.get(i).flagFalseNode.tsNodeList);
-                }
-                if (current.keys.get(i).flagTrueNode!=null) {
-                    for (int j = 0; j< current.keys.get(i).flagTrueNode.decimalNodes.size(); j++) {
-                        res.addAll(current.keys.get(i).flagTrueNode.decimalNodes.get(j).tsNodeList);
+                if (current.isLeaf) {
+                    if (current.keys.get(i).flagFalseNode!=null) {
+                        res.addAll(current.keys.get(i).flagFalseNode.tsNodeList);
+                    }
+                    if (current.keys.get(i).flagTrueNode!=null) {
+                        for (int j = 0; j< current.keys.get(i).flagTrueNode.decimalNodes.size(); j++) {
+                            res.addAll(current.keys.get(i).flagTrueNode.decimalNodes.get(j).tsNodeList);
+                        }
                     }
                 }
+
             }
 
             if (current.children != null) {
                 for (BPlusDecimalTreeNode child : current.children) {
-                    if (child != null && child.isLeaf) {
+                    if (child != null) {
                         queue.offer(child);
                     }
                 }
@@ -411,7 +457,7 @@ public class BPlusDecimalTree {
 //            System.out.println("Key " + key + " found: " + found);
 //        }
 
-        BPlusDecimalTree bPlusTree = new BPlusDecimalTree(3);
+        BPlusDecimalTree bPlusTree = new BPlusDecimalTree(3, new SkipList());
         // 根据位数创建一个树索引
         bPlusTree = bPlusTree.buildTree(bPlusTree, new byte[]{1,0}, new byte[]{1,0}, new byte[]{1,0});
 //        bPlusTree.insert(1);

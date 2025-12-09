@@ -38,14 +38,19 @@ public class BPlusTree {
 
     private int order;
 
+    private SkipList skipList;
+
     // 用一个指针永远指向下一个值
-    public static KeyNode previousTSNode = null;
+    public static KeyNode prev = null;
+
+    public static KeyNode next = null;
 
 
 
-    public BPlusTree(int order) {
+    public BPlusTree(int order, SkipList skipList) {
         this.root = new BPlusTreeNode(true);
         this.order = order;
+        this.skipList = skipList;
     }
 
     public void insert(BPlusDecimalTree decimalTree, byte[] key, byte[] compressInt,byte[] decimalCount, byte[] xorFlag, byte[] xorVal, byte[] compressDecimal, long timestamp) {
@@ -65,11 +70,11 @@ public class BPlusTree {
             splitChild(newRoot, 0);
             root = newRoot;
         }
-        insertNonFull(root, decimalTree, key, compressInt, decimalCount, xorFlag, xorVal, compressDecimal, timestamp);
+        insertNonFull(root, decimalTree, key, compressInt, decimalCount, xorFlag, xorVal, compressDecimal, timestamp, skipList);
     }
 
     private void insertNonFull(BPlusTreeNode node, BPlusDecimalTree decimalTree, byte[] key, byte[] compressInt,
-                               byte[] decimalCount, byte[] xorFlag, byte[] xorVal, byte[] compressDecimal, long timestamp) {
+                               byte[] decimalCount, byte[] xorFlag, byte[] xorVal, byte[] compressDecimal, long timestamp, SkipList skipList) {
         int i = node.keys.size() - 1;
 
         // 对于第一次出现的整数，直接插入到二级索引 (补充逻辑)
@@ -95,7 +100,7 @@ public class BPlusTree {
                         i++;
                     }
                 }
-                insertNonFull(node.children.get(i), decimalTree, key, compressInt, decimalCount, xorFlag, xorVal, compressDecimal, timestamp);
+                insertNonFull(node.children.get(i), decimalTree, key, compressInt, decimalCount, xorFlag, xorVal, compressDecimal, timestamp, skipList);
             }catch (Exception e) {
                 System.out.println(e.getMessage());
             }
@@ -208,6 +213,9 @@ public class BPlusTree {
             int keySize  = current.keys.size();
             for (int i =0; i < keySize; i++) {
                 size = size + current.keys.get(i).key.length;
+                if (i>0) {
+                    size += 64;
+                }
                 if (current.isLeaf) {
                     size = size + current.keys.get(i).bPlusDecimalTree.levelOrderTraversal(current.keys.get(i).bPlusDecimalTree);
                 }
@@ -224,6 +232,72 @@ public class BPlusTree {
         return size;
     }
 
+    public long levelOrderTraversalWithPointer(BPlusTree tree){
+        long size = 0;
+        if (tree == null) {
+            System.out.println("The tree is empty.");
+            return size;
+        }
+
+        Queue<BPlusTreeNode> queue = new LinkedList<>();
+        queue.offer(tree.root);
+
+        while (!queue.isEmpty()) {
+            BPlusTreeNode current = queue.poll();
+            if (current != root) {
+                size += 64*2;
+            }
+            int keySize  = current.keys.size();
+            for (int i =0; i < keySize; i++) {
+                size = size + current.keys.get(i).key.length;
+                if (current.isLeaf) {
+                    size = size + current.keys.get(i).bPlusDecimalTree.levelOrderTraversalWithPointer(current.keys.get(i).bPlusDecimalTree);
+                }
+            }
+
+            if (current.children != null) {
+                for (BPlusTreeNode child : current.children) {
+                    if (child != null) {
+                        queue.offer(child);
+                    }
+                }
+            }
+        }
+
+
+        return size;
+    }
+
+    public List<SkiplistNode> levelOrderTraversalList(BPlusTree tree){
+        List<SkiplistNode> TSNodes = new ArrayList<>();
+        if (tree == null) {
+            System.out.println("The tree is empty.");
+            return null;
+        }
+
+        Queue<BPlusTreeNode> queue = new LinkedList<>();
+        queue.offer(tree.root);
+
+        while (!queue.isEmpty()) {
+            BPlusTreeNode current = queue.poll();
+            int keySize  = current.keys.size();
+            for (int i =0; i < keySize; i++) {
+                if (current.isLeaf) {
+                    TSNodes.addAll(current.keys.get(i).bPlusDecimalTree.getAllLeaf(current.keys.get(i).bPlusDecimalTree)) ;
+                }
+            }
+
+            if (current.children != null) {
+                for (BPlusTreeNode child : current.children) {
+                    if (child != null) {
+                        queue.offer(child);
+                    }
+                }
+            }
+        }
+        return TSNodes;
+    }
+
 
     public BPlusTreeNode getRoot(BPlusTree tree) {
         return tree.root;
@@ -232,19 +306,19 @@ public class BPlusTree {
 
     public static void main(String[] args) {
         // 创建一个B+树，假设阶数为3
-        BPlusTree bPlusTree = new BPlusTree(3);
-        BPlusDecimalTree deciamlPlusTree = new BPlusDecimalTree(3);
+        BPlusTree bPlusTree = new BPlusTree(2, new SkipList());
+        BPlusDecimalTree deciamlPlusTree = new BPlusDecimalTree(3, new SkipList());
         // 根据位数创建一个小数位数的索引
 //        deciamlPlusTree = deciamlPlusTree.buildTree(deciamlPlusTree, 2);
         // 插入一些关键字
-        byte[][] keysToInsert = {new byte[]{1,0,1}, new byte[]{1,0,1},  new byte[]{1,0,1}, new byte[]{1,0,1},  new byte[]{1,0,1}, new byte[]{1,0,1}, new byte[]{1,0,1}};
-        byte[][] compressInt = {new byte[]{1,0,1},new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10}};
+        byte[][] keysToInsert = {new byte[]{1,1,1,1}, new byte[]{1,0,0,0,0},  new byte[]{1,0,0,1,0}, new byte[]{1,0,0,0,0},  new byte[]{1,0,0,0,0}, new byte[]{1,1,1,1}, new byte[]{1,1,1,1}, new byte[]{1,1,0,1}};
+        byte[][] xorFlag = {new byte[]{1,0,1},new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10}};
+        byte[][] xorvalue = {new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10}};
         byte[][] compressDecimal = {new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10}};
-        byte[][] decimalCount = {new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10},new byte[]{10}};
 
         long[] timestamp = {1,2,3,4,5,6,7,8,9,10,11,12,13,14};
         for (int i=0; i< keysToInsert.length; i++) {
-//            bPlusTree.insert(deciamlPlusTree, keysToInsert[i], compressInt[i], compressDecimal[i], timestamp[i]);
+            bPlusTree.insert(deciamlPlusTree, keysToInsert[i],keysToInsert[i], new byte[1], xorFlag[i], xorvalue[i], compressDecimal[i], timestamp[i]);
         }
 
         // 查找关键字并输出结果
