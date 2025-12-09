@@ -190,8 +190,8 @@ public class CamelDecompressor {
             // 使用 Double.longBitsToDouble 将 long 转换为 double
             decimalVal = Double.longBitsToDouble(decimalLong) - 1;
         } else {
-           m = (double) m_int / powers[decimal_count];
-           decimalVal = m;
+            m = (double) m_int / powers[decimal_count];
+            decimalVal = m;
         }
 
         decimalVal = Math.round(decimalVal * scale) / scale;

@@ -19,11 +19,11 @@ public class Camel {
     private int size;
     private final static long END_SIGN = Double.doubleToLongBits(Double.NaN);
 
-    private final static int DECIMAL_MAX_COUNT = 4;
+    private final static int DECIMAL_MAX_COUNT = 3;
 
     // 按照寻找到的m的值进行保存
     public final static int[] mValueBits = {3, 5, 7, 10, 15};
-//    public final static BigDecimal[]  threshold = {BigDecimal.valueOf(0.5), BigDecimal.valueOf(0.25), BigDecimal.valueOf(0.125), BigDecimal.valueOf(0.0625)};
+    //    public final static BigDecimal[]  threshold = {BigDecimal.valueOf(0.5), BigDecimal.valueOf(0.25), BigDecimal.valueOf(0.125), BigDecimal.valueOf(0.0625)};
     public final static long[]  threshold = {5, 25, 125, 625};
 
     private static final long[] powers = {1L, 10L, 100L, 1000L, 10000L, 100000L};

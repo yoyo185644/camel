@@ -5,7 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class FileReader {
-    public static final int DEFAULT_BLOCK_SIZE = 8000;
+    public static final int DEFAULT_BLOCK_SIZE = 1000;
     BufferedReader bufferedReader;
     private final int blockSize;
 

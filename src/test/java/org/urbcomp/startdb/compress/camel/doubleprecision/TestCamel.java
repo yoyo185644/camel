@@ -1,4 +1,4 @@
-package org.urbcomp.startdb.compress.elf.doubleprecision;
+package org.urbcomp.startdb.compress.camel.doubleprecision;
 
 import com.github.kutschkem.fpc.FpcCompressor;
 import org.apache.hadoop.conf.Configuration;
@@ -13,8 +13,12 @@ import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.junit.jupiter.api.Test;
-import org.urbcomp.startdb.compress.elf.compressor.*;
-import org.urbcomp.startdb.compress.elf.decompressor.*;
+import org.urbcomp.startdb.compress.camel.compressor.CamelCompressor;
+import org.urbcomp.startdb.compress.camel.compressor.ICompressor;
+import org.urbcomp.startdb.compress.camel.decompressor.CamelDecompressorOS;
+import org.urbcomp.startdb.compress.camel.decompressor.IDecompressor;
+import org.urbcomp.startdb.compress.camel.doubleprecision.ResultStructure;
+
 import yyy.ts.compress.camel.BPlusDecimalTree;
 import yyy.ts.compress.camel.BPlusTree2;
 import yyy.ts.compress.camel.CamelDecompressor;
@@ -35,10 +39,10 @@ public class TestCamel {
 
     private static final String[] FILENAMES = {
 //            "/init.csv",    //First run a dataset to ensure the relevant hbase settings of the zstd and snappy compressors
-            "/City-temp.csv", //
+//            "/City-temp.csv", //
 //            "/IR-bio-temp.csv",
 //            "/Wind-Speed.csv",
-//            "/PM10-dust.csv",
+            "/PM10-dust.csv",
 //            "/Stocks-UK.csv",
 //            "/Stocks-USA.csv",
 //            "/Stocks-DE.csv",
@@ -102,7 +106,7 @@ public class TestCamel {
             totalBlocks += 1;
 
             ICompressor[] compressors = new ICompressor[]{
-                new CamelCompressor(),
+                    new CamelCompressor(),
             };
             for (int i = 0; i < compressors.length; i++) {
                 double encodingDuration = 0;
@@ -121,7 +125,6 @@ public class TestCamel {
                 IDecompressor decompressor = decompressors[i];
                 long decode_start = System.nanoTime();
                 List<Double> uncompressedValues = decompressor.decompress();
-
                 for(int j=0; j < values.length; j++) {
                     if (values[j] != uncompressedValues.get(j).doubleValue()){
                         System.out.println(
@@ -130,7 +133,7 @@ public class TestCamel {
                                         ", uncompressed = " + uncompressedValues.get(j).doubleValue() +
                                         ", msg = Value did not match"
                         );
-                         assertEquals(j, values[j], uncompressedValues.get(j).doubleValue(), "Value did not match");
+                        assertEquals(j, values[j], uncompressedValues.get(j).doubleValue(), "Value did not match");
 
                     }
 
@@ -188,16 +191,16 @@ public class TestCamel {
             mediaDecompressTime += resultStructure.getMediaDecompressTime();
         }
         return new ResultStructure(lr.get(0).getFilename(),
-            lr.get(0).getCompressorName(),
-            lr.get(0).getCompressorRatio(),
-            compressionTime / num,
-            maxCompressTime / num,
-            minCompressTime / num,
-            mediaCompressTime / num,
-            decompressionTime / num,
-            maxDecompressTime / num,
-            minDecompressTime / num,
-            mediaDecompressTime / num
+                lr.get(0).getCompressorName(),
+                lr.get(0).getCompressorRatio(),
+                compressionTime / num,
+                maxCompressTime / num,
+                minCompressTime / num,
+                mediaCompressTime / num,
+                decompressionTime / num,
+                maxDecompressTime / num,
+                minDecompressTime / num,
+                mediaDecompressTime / num
         );
     }
 
